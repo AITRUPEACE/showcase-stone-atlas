@@ -1,19 +1,19 @@
 # Stone Atlas
 
-> A collaborative map of ancient sites — community submissions, evidence threads, and the connections curious people are piecing together across civilizations.
+> Where ancient history videos become living maps. The place to continue the investigation after the YouTube comments disappear.
 
 🔗 **Live:** [stoneatlas.dev](https://stoneatlas.dev)
 📝 **Case study:** *In progress — link will land here.*
 
-> This is a **showcase repository**. The product is closed-source. What's here: overview, architecture, stack, and the parts of the build I'd want to point a hiring manager or collaborator at.
+> This is a **showcase repository**. The product is closed-source. What's here: overview, architecture, stack, and the parts of the build worth pointing at.
 
 ---
 
 ## Screenshots
 
-![World map](./screenshots/map.png)
-![Site detail](./screenshots/site.png)
-![Community submission flow](./screenshots/submission.png)
+![Video-led landing](./screenshots/video-led.png)
+![World map with sites](./screenshots/map.png)
+![Site page with timestamps and traits](./screenshots/site.png)
 
 > Placeholder image refs. Drop PNGs into `./screenshots/` with these names.
 
@@ -21,13 +21,17 @@
 
 ## What it is
 
-Stone Atlas is an evidence-forward, curious community around megalithic architecture, ancient sites, and the patterns that emerge when you map them all in one place. The hook: the map. The depth: per-site media libraries, linked videos, discussion threads, and connections between sites on different continents.
+Ancient-history YouTube has the attention. What it doesn't have is **structured continuity** — a video drops, the comments explode, someone at 22:13 notices a masonry nub that looks exactly like Baalbek, and two weeks later the conversation is buried forever.
 
-- **Official map** of curated sites
-- **Community submissions** filterable in/out, promotable to the official map when the evidence is strong enough
-- **Per-site pages** with photos, linked YouTube content, threaded discussion
-- **Connections** between sites — a contributor can link two locations and explain why, others can build on it
-- **Three-layer transparent pricing.** Supporter tiers today; Creator Pro and Audience Tipping on a public roadmap. No participation gating, ever.
+Stone Atlas preserves that moment and gives it somewhere to go:
+
+```
+video → timestamps → sites → traits → patterns → connections → investigations
+```
+
+A creator drops an episode. The platform turns it into tagged sites with timestamped claims. Viewers contribute photos, sources, and observations. Traits (polygonal masonry, astronomical alignment, flood myth) get shared across sites. Patterns emerge. The best contributions get promoted onto the official map with attribution preserved.
+
+Not academic. Not fringe. **Evidence-forward curious.**
 
 ---
 
@@ -36,13 +40,12 @@ Stone Atlas is an evidence-forward, curious community around megalithic architec
 | Layer | Choice |
 | --- | --- |
 | Framework | Next.js 15 (App Router, Turbopack dev) on Vercel |
-| UI | React 19, Tailwind, shadcn/ui (Radix primitives), Framer Motion |
+| UI | React 19, Tailwind, shadcn/ui (Radix), Framer Motion, `react-joyride` for onboarding tours |
 | Map | Leaflet + React Leaflet, `leaflet.markercluster` |
 | State | Zustand for map state, TanStack Query for server cache |
-| Data | Supabase Postgres + Auth + Storage (photos), RLS-first |
-| Payments | Stripe (supporter tiers, Creator Pro on roadmap) |
+| Data | Supabase Postgres + Auth + Storage (photos), RLS-first, isolated `megalithic` schema |
+| Payments | Stripe (Supporter tier live; Creator Pro Q1 2027) |
 | Email | Resend + `@react-email` templates |
-| Onboarding | `react-joyride` for first-run tours |
 | PWA | Serwist |
 | Testing | Playwright |
 
@@ -50,36 +53,41 @@ Stone Atlas is an evidence-forward, curious community around megalithic architec
 
 ## Architecture at a glance
 
-- **Two-track data model.** The same `sites` table backs both the curated official map and the community submissions layer; a `status` field plus RLS decides what each viewer sees. Promotion to the official map is a status change with provenance preserved, not a copy.
-- **Schema-bounded.** All product tables live in a `megalithic` Postgres schema, isolated from Supabase's `auth`/`storage` schemas. Manual type declarations live alongside generated types in `src/types/`.
-- **Map state in Zustand, data state in React Query.** Pan/zoom/active-site/filter state is pure UI and stays in Zustand. Everything that talks to Postgres goes through React Query for cache + revalidation. This separation kept the map from re-rendering on data churn.
-- **Marker clustering tuned for sparse-but-global data.** Ancient sites don't cluster like restaurants do. Tuned `disableClusteringAtZoom`, custom cluster icons by region density, and a separate icon set for community vs. official.
-- **Media library per site.** Supabase Storage with thumbnail variants; uploads go through a server action that writes the row and the file together.
-- **Stripe webhooks → server actions.** Subscription state lives in Postgres so RLS can reason about it; the webhook is just a sync mechanism.
+- **Video-led entry, map-anchored research.** The landing surface is video + investigation, not a cold full-screen map. The map becomes central once users enter the app.
+- **Two-track data model.** The same `sites` table backs both the curated official map and the community-submissions layer. A `status` field plus RLS decides what each viewer sees. Promotion to the official map is a status transition with provenance preserved — not a copy.
+- **Traits & patterns as first-class relations.** Sites have traits (polygonal masonry, equinox alignment, etc.). Patterns are clusters of traits that recur across sites. Connections are user-authored links between two sites with reasoning attached. The whole graph is built so emerging structure can be queried, not just clicked through.
+- **Creator pages.** A YouTuber's channel becomes a profile with their mapped videos and the conversations downstream of each episode.
+- **Map state in Zustand, data state in React Query.** Pan/zoom/active-site/filter is pure UI in Zustand. Everything that talks to Postgres goes through React Query for cache + revalidation. Keeps the map from re-rendering on data churn.
+- **Onboarding via `react-joyride`** — first-run tour walks users through map, filters, video threads, and contribution flow.
 
 ---
 
 ## Implementation details worth a look
 
+### Video → mapped investigation pipeline
+The pipeline is the product. An ancient-history video is the spark; the platform's job is to turn its content into structured, navigable research: timestamps anchor claims, claims anchor sites, sites carry traits, traits cluster into patterns, patterns become investigations the community can keep open across episodes.
+
 ### Curation pipeline
-The interesting product question wasn't "how do you let anyone add a pin" — it was "how do you let anyone add a pin without diluting the official map." The answer: submissions are first-class data with the same shape as official sites, kept on a separate visual layer, with a documented promotion path that's a status transition rather than a re-keying. Contributors get attribution that survives promotion.
+The interesting product question wasn't "how do you let anyone add a pin" — it was "how do you let anyone add a pin without diluting the official map." The answer: submissions are first-class data with the same shape as official sites, kept on a separate visual layer, with a documented promotion path that's a status transition rather than a re-keying. Contributor attribution survives promotion.
 
-### Map performance with global data
-A world map of sparsely-distributed ancient sites breaks the assumptions baked into most clustering tutorials (which assume dense urban data). Cluster radii scale with zoom non-linearly; per-region icon weights stop Mesoamerica from visually drowning Stonehenge at zoom 3.
+### Map performance with sparse global data
+A world map of sparsely-distributed ancient sites breaks the assumptions baked into most clustering tutorials (which assume dense urban data). Tuned cluster radii, region-aware weighting, and a separate icon set for community vs. official so the visual hierarchy of "verified vs. submitted" reads at every zoom level.
 
-### Pricing surface that doesn't gate participation
-Three-tier roadmap (Supporter live, Creator Pro Q1 2027 with 90-day grandfather, Audience Tipping Q2–Q3 2027) is visible on the public pricing page. The product principle — never gate the basic act of contributing — shows up in the schema: there's no `is_paid` flag guarding submissions, and the Stripe state only unlocks orthogonal features (privacy, export, richer search).
+### Layered monetization that never gates participation
+Three-layer transparent pricing:
+- **Supporter tier** (live) — $5/mo or $50/yr. Unlimited saves, follow creators, alerts on new mapped episodes, "My Atlas" personal research board, advanced search and timeline filters.
+- **Creator Pro** (Q1 2027, 90-day grandfather window) — creator pages, embed widgets, analytics on which sites/episodes drive traffic.
+- **Audience Tipping** (Q2–Q3 2027) — revenue-share with creators, native to the platform.
 
-### Onboarding via `react-joyride`
-First-run tour walks new users through the map, filters, and submission flow without modal-trapping them. State-tracked so the tour doesn't re-fire across sessions.
+The product principle — **never gate the basic act of contributing** — shows up in the schema. There's no `is_paid` flag guarding submissions; Stripe state only unlocks orthogonal features (privacy, export, richer search).
 
 ---
 
 ## Project status
 
-- **Live** with map, community submissions, site pages, discussion, and supporter tiers.
-- **Creator Pro** designed, scheduled.
-- **Case study** pending — will cover the curation pipeline and the global-scale clustering work.
+- **Live** with map, site pages, traits/patterns model, community submissions, threaded discussion, and the Supporter tier.
+- **YouTube-first repositioning** in flight — landing copy, creator pages, video-led entry.
+- **Creator Pro** designed, scheduled Q1 2027.
 
 ---
 
