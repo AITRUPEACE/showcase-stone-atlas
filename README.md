@@ -1,11 +1,11 @@
 # Stone Atlas
 
-> Where ancient history videos become living maps. The place to continue the investigation after the YouTube comments disappear.
+> Where ancient history videos become living maps. The place to keep the conversation going after the YouTube comments disappear.
 
 🔗 **Live:** [stoneatlas.dev](https://stoneatlas.dev)
-📝 **Case study:** *In progress — link will land here.*
+📝 **Case study:** in progress, link will land here.
 
-> This is a **showcase repository**. The product is closed-source. What's here: overview, architecture, stack, and the parts of the build worth pointing at.
+> This is a showcase repository. The product itself is closed-source. What's here is an overview, the architecture, the stack, and the parts of the build worth pointing at.
 
 ---
 
@@ -15,23 +15,17 @@
 ![World map with sites](./screenshots/map.png)
 ![Site page with timestamps and traits](./screenshots/site.png)
 
-> Placeholder image refs. Drop PNGs into `./screenshots/` with these names.
+Placeholder image refs. PNGs go in `./screenshots/` with these names.
 
 ---
 
 ## What it is
 
-Ancient-history YouTube has the attention. What it doesn't have is **structured continuity** — a video drops, the comments explode, someone at 22:13 notices a masonry nub that looks exactly like Baalbek, and two weeks later the conversation is buried forever.
+Ancient-history YouTube already has the attention. What it doesn't have is structured continuity. A video drops, the comments explode, someone at 22:13 notices a masonry nub that looks exactly like Baalbek, someone else says they live there and can go photograph it, and two weeks later the whole conversation is buried forever.
 
-Stone Atlas preserves that moment and gives it somewhere to go:
+Stone Atlas is the place that conversation goes instead. A creator drops an episode, and the platform turns it into tagged sites with timestamped claims. Viewers contribute photos, sources, and observations. Traits (polygonal masonry, equinox alignment, flood myths, etc.) get shared across sites as they show up. Patterns are the clusters that emerge when several sites share the same trait. The strongest community submissions can be promoted onto the official map, with attribution preserved through the promotion.
 
-```
-video → timestamps → sites → traits → patterns → connections → investigations
-```
-
-A creator drops an episode. The platform turns it into tagged sites with timestamped claims. Viewers contribute photos, sources, and observations. Traits (polygonal masonry, astronomical alignment, flood myth) get shared across sites. Patterns emerge. The best contributions get promoted onto the official map with attribution preserved.
-
-Not academic. Not fringe. **Evidence-forward curious.**
+The audience is curious viewers, not academics. Evidence-forward, but not gatekept.
 
 ---
 
@@ -43,9 +37,9 @@ Not academic. Not fringe. **Evidence-forward curious.**
 | UI | React 19, Tailwind, shadcn/ui (Radix), Framer Motion, `react-joyride` for onboarding tours |
 | Map | Leaflet + React Leaflet, `leaflet.markercluster` |
 | State | Zustand for map state, TanStack Query for server cache |
-| Data | Supabase Postgres + Auth + Storage (photos), RLS-first, isolated `megalithic` schema |
-| Payments | Stripe (Supporter tier live; Creator Pro Q1 2027) |
-| Email | Resend + `@react-email` templates |
+| Data | Supabase Postgres, Supabase Auth, Supabase Storage for photos, RLS-first, isolated `megalithic` schema |
+| Payments | Stripe (Supporter tier live, Creator Pro on the roadmap) |
+| Email | Resend with `@react-email` templates |
 | PWA | Serwist |
 | Testing | Playwright |
 
@@ -53,49 +47,57 @@ Not academic. Not fringe. **Evidence-forward curious.**
 
 ## Architecture at a glance
 
-- **Video-led entry, map-anchored research.** The landing surface is video + investigation, not a cold full-screen map. The map becomes central once users enter the app.
-- **Two-track data model.** The same `sites` table backs both the curated official map and the community-submissions layer. A `status` field plus RLS decides what each viewer sees. Promotion to the official map is a status transition with provenance preserved — not a copy.
-- **Traits & patterns as first-class relations.** Sites have traits (polygonal masonry, equinox alignment, etc.). Patterns are clusters of traits that recur across sites. Connections are user-authored links between two sites with reasoning attached. The whole graph is built so emerging structure can be queried, not just clicked through.
-- **Creator pages.** A YouTuber's channel becomes a profile with their mapped videos and the conversations downstream of each episode.
-- **Map state in Zustand, data state in React Query.** Pan/zoom/active-site/filter is pure UI in Zustand. Everything that talks to Postgres goes through React Query for cache + revalidation. Keeps the map from re-rendering on data churn.
-- **Onboarding via `react-joyride`** — first-run tour walks users through map, filters, video threads, and contribution flow.
+The product hierarchy goes `video → timestamps → sites → traits → patterns → connections → investigations`. The video is the front door, the map is the spatial anchor, and traits and patterns are the structure underneath. The landing surface leads with video and active investigation rather than a cold full-screen map, because a full map is a powerful tool once you know what you're looking at and a confusing one when you don't.
+
+The data model has one quirk worth calling out. The same `sites` table backs both the curated official map and the community-submissions layer. A `status` field plus RLS decides what each viewer sees on which layer. Promotion to the official map is a status transition with provenance preserved, rather than a copy from one table to another. That keeps contributor attribution intact across promotion and avoids the long-term mess of two parallel datasets that drift.
+
+Traits, patterns, and connections are first-class relations rather than free text. A site can carry several traits, a trait can recur across many sites, and a connection is a user-authored link between two sites with reasoning attached. The whole thing is built so emerging structure can be queried, not just clicked through.
+
+Map state lives in Zustand (pan, zoom, active site, filters), and data state lives in TanStack Query (anything touching Postgres). Keeping those two separated stops the map from re-rendering on every data revalidation, which matters when the data layer is doing a lot of work.
 
 ---
 
 ## Implementation details worth a look
 
-### Video → mapped investigation pipeline
-The pipeline is the product. An ancient-history video is the spark; the platform's job is to turn its content into structured, navigable research: timestamps anchor claims, claims anchor sites, sites carry traits, traits cluster into patterns, patterns become investigations the community can keep open across episodes.
+### Video to mapped investigation
+
+The pipeline is the product. An ancient-history video is the spark, and the platform's job is to turn its content into navigable research: timestamps anchor claims, claims anchor sites, sites carry traits, traits cluster into patterns, patterns become investigations the community can keep open across episodes from the same creator and across creators.
 
 ### Curation pipeline
-The interesting product question wasn't "how do you let anyone add a pin" — it was "how do you let anyone add a pin without diluting the official map." The answer: submissions are first-class data with the same shape as official sites, kept on a separate visual layer, with a documented promotion path that's a status transition rather than a re-keying. Contributor attribution survives promotion.
+
+The interesting product question wasn't "how do you let anyone add a pin," it was "how do you let anyone add a pin without diluting the official map." The answer was to treat community submissions as first-class data with the same shape as official sites, kept on a separate visual layer, with a documented promotion path that's a status transition.
 
 ### Map performance with sparse global data
-A world map of sparsely-distributed ancient sites breaks the assumptions baked into most clustering tutorials (which assume dense urban data). Tuned cluster radii, region-aware weighting, and a separate icon set for community vs. official so the visual hierarchy of "verified vs. submitted" reads at every zoom level.
 
-### Layered monetization that never gates participation
-Three-layer transparent pricing:
-- **Supporter tier** (live) — $5/mo or $50/yr. Unlimited saves, follow creators, alerts on new mapped episodes, "My Atlas" personal research board, advanced search and timeline filters.
-- **Creator Pro** (Q1 2027, 90-day grandfather window) — creator pages, embed widgets, analytics on which sites/episodes drive traffic.
-- **Audience Tipping** (Q2–Q3 2027) — revenue-share with creators, native to the platform.
+A world map of sparsely-distributed ancient sites breaks the assumptions baked into most clustering tutorials, which assume dense urban data. The cluster radii had to be tuned per zoom level rather than left at defaults, with separate icon weighting for community vs. official so the visual hierarchy reads cleanly at every zoom level.
 
-The product principle — **never gate the basic act of contributing** — shows up in the schema. There's no `is_paid` flag guarding submissions; Stripe state only unlocks orthogonal features (privacy, export, richer search).
+### Pricing that doesn't gate participation
+
+Three transparent layers, with timing visible on the public pricing page:
+
+1. **Supporter tier** (live), $5/month or $50/year. Unlimited saves, follow creators, alerts when new mapped videos drop, "My Atlas" personal research board, advanced search and timeline filters.
+2. **Creator Pro** (Q1 2027, 90-day grandfather window). Creator pages, embed widgets, analytics on which sites and episodes drive traffic.
+3. **Audience Tipping** (Q2 to Q3 2027). Native tipping with revenue-share to creators.
+
+The product principle is that the basic act of contributing is never gated. The schema reflects this: there's no `is_paid` flag guarding submissions, and Stripe state only unlocks features that are orthogonal to participation (privacy, export, richer search).
 
 ---
 
 ## Project status
 
-- **Live** with map, site pages, traits/patterns model, community submissions, threaded discussion, and the Supporter tier.
-- **YouTube-first repositioning** in flight — landing copy, creator pages, video-led entry.
-- **Creator Pro** designed, scheduled Q1 2027.
+Live with map, site pages, the traits and patterns model, community submissions, threaded discussion, and the Supporter tier.
+
+The YouTube-first repositioning is in flight, covering landing copy, creator pages, and a video-led entry surface that replaces the older map-first homepage.
+
+Creator Pro is designed and scheduled for Q1 2027.
 
 ---
 
 ## About
 
-Built solo by **Cristian Tohatan**.
+Built solo by Cristian Tohatan.
 
 - 🌐 [cristian-tohatan.com](https://cristian-tohatan.com)
 - 💼 [LinkedIn](https://linkedin.com/in/cristian-tohatan)
 
-Source is closed. Happy to walk through the codebase live — reach out via the portfolio.
+Source is closed. Happy to walk through the codebase live; the portfolio site has the easiest way to reach me.
