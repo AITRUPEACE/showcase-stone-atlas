@@ -96,7 +96,7 @@ export function StopThree() {
           </div>
           
           <p className="text-sm text-white/80 mb-2">
-            "{observation.note}"
+            &ldquo;{observation.note}&rdquo;
           </p>
           
           <div className="flex items-center gap-2 text-xs text-white/40">

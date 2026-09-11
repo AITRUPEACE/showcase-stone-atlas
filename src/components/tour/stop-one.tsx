@@ -6,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { TourNavigation } from "./tour-navigation";
 import { useTourStore } from "@/stores/tour-store";
-import { tourCopy, sites } from "@/data/tour";
+import { tourCopy } from "@/data/tour";
 
 export function StopOne() {
   const { currentStop, reducedMotion } = useTourStore();
   
   if (currentStop !== "stop1") return null;
 
-  const site = sites.sacsayhuaman;
   const copy = tourCopy.stop1;
 
   const variants = reducedMotion

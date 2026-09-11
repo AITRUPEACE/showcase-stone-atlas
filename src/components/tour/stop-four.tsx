@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Image, FileText, Lightbulb, ArrowRight, ChevronRight } from "lucide-react";
+import { Check, ImageIcon, FileText, Lightbulb, ArrowRight, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { useTourStore } from "@/stores/tour-store";
@@ -83,7 +83,7 @@ export function StopFour() {
           >
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                <Image className="w-4 h-4 text-blue-400" />
+                <ImageIcon className="w-4 h-4 text-blue-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs uppercase tracking-wider text-white/40 font-medium mb-1">

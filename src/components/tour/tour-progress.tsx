@@ -1,6 +1,6 @@
 "use client";
 
-import { tourStops, TourStop } from "@/data/tour";
+import { TourStop } from "@/data/tour";
 import { useTourStore } from "@/stores/tour-store";
 import { cn } from "@/lib/utils";
 

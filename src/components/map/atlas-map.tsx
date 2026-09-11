@@ -71,18 +71,25 @@ interface ConnectionLinesProps {
 }
 
 function ConnectionLines({ sites: activeSiteIds, showConnections, reducedMotion }: ConnectionLinesProps) {
-  const [showLines, setShowLines] = useState(false);
+  const [isAnimationComplete, setIsAnimationComplete] = useState(false);
+  const prevShowConnections = useRef(showConnections);
   
   useEffect(() => {
-    if (showConnections) {
-      const timer = setTimeout(() => setShowLines(true), reducedMotion ? 0 : 300);
+    if (showConnections && !prevShowConnections.current) {
+      const timer = setTimeout(() => setIsAnimationComplete(true), reducedMotion ? 0 : 300);
+      prevShowConnections.current = true;
       return () => clearTimeout(timer);
-    } else {
-      setShowLines(false);
     }
+    if (!showConnections && prevShowConnections.current) {
+      setIsAnimationComplete(false);
+      prevShowConnections.current = false;
+    }
+    return undefined;
   }, [showConnections, reducedMotion]);
 
-  if (!showLines || activeSiteIds.length < 2) return null;
+  const shouldShowLines = showConnections && (isAnimationComplete || reducedMotion);
+
+  if (!shouldShowLines || activeSiteIds.length < 2) return null;
 
   const activeSites = activeSiteIds
     .map((id) => sites[id])
